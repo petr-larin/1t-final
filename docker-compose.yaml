@@ -1,0 +1,23 @@
+name: final
+services:
+  postgres:
+    image: postgres:latest
+    container_name: pg
+    environment:
+      POSTGRES_DB: "taxi"
+      POSTGRES_USER: "peter"
+      POSTGRES_PASSWORD: "peter"
+      PGDATA: "/var/lib/postgresql/data/pgdata"
+    volumes:
+      #- ./initdb:/docker-entrypoint-initdb.d
+      - pg_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U peter -d junior_script"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+volumes:
+  pg_data:
