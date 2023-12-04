@@ -1,3 +1,5 @@
+drop table if exists taxi;
+
 create table if not exists taxi(
   v_id int,
   pickup_dt timestamp,
@@ -19,7 +21,10 @@ create table if not exists taxi(
   cong float
 );
 
-delete from taxi where v_id is NULL;
+copy public.taxi
+from '/docker-entrypoint-initdb.d/yellow_tripdata_2020-01.csv'
+(format csv, header)
+where v_id is not null;
 
 alter table taxi
 drop column v_id,
