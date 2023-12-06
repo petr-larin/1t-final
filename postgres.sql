@@ -24,7 +24,11 @@ create table if not exists taxi(
 copy public.taxi
 from '/docker-entrypoint-initdb.d/yellow_tripdata_2020-01.csv'
 (format csv, header)
-where v_id is not null;
+where v_id is not null                   -- Неинформативные строки с 5 NULL в каждой, включая кол-во пассажиров.
+  and date(pickup_dt) <= '2020-01-31'    -- Поездка либо начинается либо заканчивается 
+  and date(dropoff_dt) >= '2020-01-01'   --   в январе 2020 либо и то и другое.
+  and total > 0;                         -- Отсеиваем "странные" поездки со стоимостью <= 0; можно
+                                         --   этого не делать, но тогда колонки MIN неинформативны.                    
 
 alter table taxi
 drop column v_id,
@@ -38,52 +42,39 @@ drop column fare,
 drop column extra,
 drop column mta_tax,
 drop column tolls,
-drop column impr;
-
-select count(*) from taxi where dist=0;-- order by pickup_dt desc;-- limit 1000;
+drop column impr,
+drop column cong;
 
 select count (*) from taxi;
 
-with sss as(
+with raw as(
 select 
   date(pickup_dt) as pickup_dt,
-  --n_pass,
---  case
---    when n_pass > 3 then 4
---	else n_pass
---  end as n_p,
-  sum(
-  case
-    when n_pass = 0 then 1
-    else 0
-  end) as n_0,
-  sum(
-  case
-    when n_pass = 1 then 1
-    else 0
-  end) as n_1,
-  sum(
-  case
-    when n_pass = 2 then 1
-    else 0
-  end) as n_2,
-  sum(
-  case
-    when n_pass = 3 then 1
-    else 0
-  end) as n_3,
-  sum(
-  case
-    when n_pass > 3 then 1
-    else 0
-  end) as n_4,
-  max(
-  case
-    when n_pass = 3 then total
-    else NULL
-  end) as max_3
+  sum(case when n_pass = 0 then 1 else 0 end) as n_0,
+  sum(case when n_pass = 1 then 1 else 0 end) as n_1,
+  sum(case when n_pass = 2 then 1 else 0 end) as n_2,
+  sum(case when n_pass = 3 then 1 else 0 end) as n_3,
+  sum(case when n_pass > 3 then 1 else 0 end) as n_4,
+  min(case when n_pass = 0 then total else NULL end) as min_0,
+  max(case when n_pass = 0 then total else NULL end) as max_0,
+  min(case when n_pass = 1 then total else NULL end) as min_1,
+  max(case when n_pass = 1 then total else NULL end) as max_1,
+  min(case when n_pass = 2 then total else NULL end) as min_2,
+  max(case when n_pass = 2 then total else NULL end) as max_2,
+  min(case when n_pass = 3 then total else NULL end) as min_3,
+  max(case when n_pass = 3 then total else NULL end) as max_3,
+  min(case when n_pass > 3 then total else NULL end) as min_4,
+  max(case when n_pass > 3 then total else NULL end) as max_4
 from taxi
-group by date(pickup_dt)--, n_p
+group by date(pickup_dt)
 order by date(pickup_dt)
-
-)select *, round(n_3*100.0/(n_0 + n_1 + n_2 + n_3 + n_4),2) as p_3 from sss
+)
+select
+  date(pickup_dt) as "date",
+  round(n_0 * 100.0/(n_0 + n_1 + n_2 + n_3 + n_4), 2) as percent_0,
+  round(n_1 * 100.0/(n_0 + n_1 + n_2 + n_3 + n_4), 2) as percent_1,
+  round(n_2 * 100.0/(n_0 + n_1 + n_2 + n_3 + n_4), 2) as percent_2,
+  round(n_3 * 100.0/(n_0 + n_1 + n_2 + n_3 + n_4), 2) as percent_3,
+  round(n_4 * 100.0/(n_0 + n_1 + n_2 + n_3 + n_4), 2) as "percent_4+",
+  min_0, max_0, min_1, max_1, min_2, max_2, min_3, max_3, min_4 as "min_4+", max_4 as "max_4+"
+from raw
