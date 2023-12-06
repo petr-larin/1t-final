@@ -9,7 +9,9 @@ services:
       POSTGRES_PASSWORD: "peter"
       PGDATA: "/var/lib/postgresql/data/pgdata"
     volumes:
-      - ./input_data:/docker-entrypoint-initdb.d
+      #- ./input_data:/docker-entrypoint-initdb.d
+      - ./input_data:/input_data
+      - ./output_data_pg:/output_data_pg
       - pg_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"

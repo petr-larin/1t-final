@@ -1,1 +1,4 @@
 input_data/
+.ipynb_checkpoints/
+eda.ipynb
+stats.txt
